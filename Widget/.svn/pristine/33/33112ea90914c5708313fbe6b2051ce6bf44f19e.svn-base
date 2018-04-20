@@ -1,0 +1,322 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>个人主页</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../css/aui.css" />
+    <style type="text/css">
+        .user-info {
+            background-color: #ffffff;
+            padding: 0.75rem 0;
+        }
+        img.avatar {
+            display: block;
+            margin: 0 auto;
+            width: 20%;
+        }
+        .aui-list .aui-list-header {
+            background-color: #ffffff;
+            line-height: 1.2rem;
+        }
+        .aui-list .aui-list-item {
+            background-color: #f8f6ef;
+        }
+    </style>
+</head>
+<script type="text/javascript" src="../script/TouchSlide.1.1.js" ></script>
+<body>
+
+    <section class="aui-content user-info aui-text-center aui-margin-b-15">
+        <img src="../image/user_weiboimage_board@2x.png" class="avatar aui-img-round" id="avatar">
+        <h2 class="aui-margin-t-15" id="username"></h2>
+        <div class="aui-row aui-margin-t-15" id="otherUser">
+            <div class="aui-btn aui-btn-info" style="width:25%;">关注</div>
+            <div class="aui-btn aui-btn-info" style="width:25%;">私信</div>
+        </div>
+        <div class="aui-row aui-margin-t-15 aui-hide" id="currentUser">
+            <div class="aui-btn aui-btn-info" style="width:50%;" onclick="openInfo()">编辑个人资料</div>
+        </div>
+        <div class="aui-row aui-margin-t-15">
+            <div class="aui-col-xs-6 aui-border-r">
+                <big class="aui-text-default">0</big>
+                <div class="aui-gird-lable aui-font-size-12">关注</div>
+            </div>
+            <div class="aui-col-xs-6 aui-border-r">
+                <big class="aui-text-default">0</big>
+                <div class="aui-gird-lable aui-font-size-12">粉丝</div>
+            </div>
+        </div>
+    </section>
+
+    <div class="aui-content" id="touchSlide">
+        <div class="aui-tab">
+            <div class="aui-tab-item aui-active">发帖</div>
+            <div class="aui-tab-item">回复</div>
+        </div>
+        <div class="bd" id="tabBox-bd">
+            <ul>
+                <!--发帖-->
+                <li class="aui-content">
+                    <ul class="aui-list aui-media-list" id="postList">
+                    </ul>
+                </li>
+                <!--回复-->
+                <li class="aui-content">
+                    <ul class="aui-list aui-media-list" id="commentList">
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="pageState aui-hide"></div>
+
+</body>
+<script type="text/javascript" src="../script/api.js" ></script>
+<script type="text/javascript" src="../script/APICloud-rest-SHA1.js" ></script>
+<script type="text/javascript" src="../script/remotedb.js" ></script>
+<script type="text/javascript" src="../script/zepto.min.js" ></script>
+<script type="text/javascript">
+			TouchSlide({
+                slideCell:"#touchSlide",
+                titCell : ".aui-tab .aui-tab-item",
+                mainCell : ".bd ul",
+                pageStateCell : ".pageState",
+                endFun : function(i){
+                    /*if(LoadedPageFlag[i] == true){//高度自适应
+                        var touchSlide = document.getElementById('touchSlide');
+                        var pageItems = $api.domAll('.aui-media-list');
+                        touchSlide.style.height = (pageItems[i].offsetHeight - 25) + "px";
+                        alert(touchSlide.style.height + ' ' + pageItems[0].offsetHeight + ' ' + pageItems[1].offsetHeight);
+                    }*/
+                    var tabs = $api.domAll('.aui-tab-item');
+                    for(var index = 0 ; index < tabs.length ; index++){
+                        if(index == i){
+                            $api.addCls(tabs[index], 'aui-active');
+                        }
+                        else{
+                            $api.removeCls(tabs[index], 'aui-active');
+                        }
+                    }
+				}
+			});
+</script>
+<script type="text/javascript">
+    apiready = function () {
+        Init();
+        cur_list_time = new Date().getTime();
+        getPosts();
+        getComments();
+    }
+
+    var curUser, cur_list_time;
+    var postListData = [];
+    var commentListData = [];
+    var queryData;
+    var LoadedPageFlag = ['false', 'false'];
+
+    function Init(){
+        curUser = $api.getStorage('current user');
+        if(api.pageParam.targetUser == curUser){
+            $('#currentUser').removeClass('aui-hide');
+            $('#otherUser').addClass('aui-hide');
+        }
+        document.getElementById('username').innerHTML = api.pageParam.targetUser;
+        if("userAvatar" in api.pageParam){
+            document.getElementById("avatar").src = api.pageParam.userAvatar;
+        }
+        else{
+            fnGet('user',{"username":api.pageParam.targetUser},0,5
+	            ,function(ret,err){
+	                if(ret){
+	                    var body = ret.body[0];
+	                    document.getElementById('avatar').src = body.avatar.url;
+	                }
+	                else{
+	                    alert(JSON.stringify(err));
+	                }
+	            });
+        }
+    }
+
+    function getPosts(){
+        var query = api.require('query');
+        var model = api.require('model');
+
+        query.createQuery(function(ret,err){
+        	if(ret && ret.qid){
+                var qid = ret.qid;
+
+                query.whereLessThanOrEqual({//用cur_list_time记录现在加载出来的时间最早的帖，保证不重复加载相同的帖子
+                    qid : qid,
+                    value : cur_list_time,
+                    column : 'time'
+                });
+
+                query.limit({
+                    qid : qid,
+                    value : 20
+                });
+
+                query.desc({
+                    qid : qid,
+                    column : 'time'
+                });
+
+                query.whereEqual({
+                    qid : qid,
+                    value : api.pageParam.targetUser,
+                    column : 'poster'
+                });
+
+                model.findAll({
+                    class: 'Forum',
+                    qid: qid
+                },function(ret,err){
+                    if(ret.length != 0){
+                        queryData = ret;
+                        pushData(0);
+                    }
+                });
+            }
+        });
+    }
+
+    function pushData( index ){//因为回调的异步关系，递归调用该函数加载postListData的数据
+        fnGet('user',{"username":queryData[index].poster},0,5
+            ,function(ret,err){
+                if(ret){
+                    var body = ret.body[0];
+                    postListData.push({
+                        images : queryData[index].images,
+                        title : queryData[index].title,
+                        poster : queryData[index].poster,
+                        date : new Date(queryData[index].time).toLocaleString(),
+                        id : queryData[index].id,
+                        content : queryData[index].content,
+                        avatar : body.avatar.url
+                    });
+                    if(index == queryData.length - 1){
+                        cur_list_time = queryData[index].time - 1;
+                        openPostList();
+                    }
+                    else{
+                        pushData(index + 1);
+                    }
+                }
+                else{
+                    alert(JSON.stringify(err));
+                }
+            });
+    }
+
+    function openPostList(){
+        for(var i in postListData){
+            var head = document.getElementById('postList');
+            var el = document.createElement('li');
+            $api.attr(el, 'class', 'aui-list-item');
+            $api.attr(el, 'id', i);
+            $api.attr(el, 'onclick', 'openPost( this.id )');
+
+            var str = '<div class="aui-list-item-inner">';
+                str += '<div class="aui-list-item-title aui-font-size-18">' + postListData[i].title + '</div>';//标题
+                str += '<div class="aui-row aui-row-padded aui-margin-t-5">';
+                    for(var j in postListData[i].images){
+                        str += '<div class="aui-col-xs-4"><img src="' + postListData[i].images[j].url + '"/></div>';//内容中的图片
+                    }
+                str += '</div>';
+            str += '</div>';
+            str += '<div class="aui-info  aui-padded-t-0 aui-padded-r-15">';
+                str += '<div class="aui-info-item aui-font-size-12">';
+                    str += '<img src="' + postListData[i].avatar + '" style="width:1rem" class="aui-img-round" />';//用户头像
+                    str += '<span class="aui-margin-l-5">' + postListData[i].poster + '</span>';//用户名
+                str += '</div>';
+                str += '<div class="aui-info-item aui-font-size-12">' + postListData[i].date + '</div>';//日期
+            str += '</div>';
+
+            var o = $api.html(el, str);
+            head.appendChild(o);
+        }
+        LoadedPageFlag[0] = true;
+    }
+
+    function getComments(){
+        client = new Resource('A6061114726582','F70FEF7F-7BB8-5B9C-EEB3-41D3963C3F0C');//JS-SDK的初始化
+        var Model = client.Factory("Comments");
+        Model.query({
+          filter:{
+            where:{
+              "poster" : api.pageParam.targetUser
+            },
+            fileds : ["poster"],
+            skip : 0,
+            limit : 20
+          }
+        },function (ret,err) {
+            if(ret){
+                commentListData = ret;
+                openComments();
+            }
+            else{
+                alert(JSON.stringify(err));
+            }
+        });
+    }
+
+    function openComments(){
+        for(var i in commentListData){
+            var head = document.getElementById('commentList');
+            var el = document.createElement('li');
+            $api.attr(el, 'class', 'aui-list-item');
+            $api.attr(el, 'id', i);
+
+            var str = '<div class="aui-media-list-item-inner">';
+                str += '<div class="aui-list-item-inner">';
+                    str += '<div class="aui-list-item-text">';
+                        str += '<div class="aui-list-item-title">' + commentListData[i].postTitle + '</div>';
+                    str += '</div>';
+                    str += '<div class="aui-list-item-text">';
+                        str += commentListData[i].content;
+                    str += '</div>';
+                str += '</div>';
+                str += '<div class="aui-info" style="padding-top:0">';
+                    str += '<div class="aui-info-item">';
+                        var date = new Date(commentListData[i].createdAt);
+                        str += date.toLocaleString();
+                    str += '</div>';
+                str += '</div>';
+
+            var o = $api.html(el, str);
+            head.appendChild(o);
+        }
+        LoadedPageFlag[1] = true;
+    }
+
+    function openPost( id ){
+        api.openWin({
+            name: 'win_post',
+            url: './win_post.html',
+            pageParam: {
+                content : postListData[id].content,
+                postTime : postListData[id].date,
+                poster : postListData[id].poster,
+                postTitle : postListData[id].title,
+                postID : postListData[id].id
+            }
+        });
+    }
+
+    function openInfo(){
+        api.openWin({
+            name: 'my_info',
+            url: './my_info.html',
+            pageParam: {
+                targetUser : curUser
+            }
+        });
+    }
+</script>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>中心广场</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/style.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/common.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/aui.css" />
+    <style>
+        body{
+
+        }
+    </style>
+</head>
+<body>
+    <header class="aui-bar aui-bar-nav">
+    <a class="aui-pull-left aui-btn" tapmode="background: #D8D9DA ;"onclick="fnSearch()">
+        <span class="aui-iconfont aui-icon-search"></span>
+    </a>
+    <div class="aui-title">中心广场</div>
+    <a class="aui-pull-right aui-btn" onclick="openNewWin( 'win_edit' )">
+        <span class="aui-iconfont aui-icon-edit"></span>
+    </a>
+    </header>
+    <div class="topoffset"></div>
+<script type="text/javascript" src="../script/api.js"></script>
+<script src="../script/zepto.min.js"></script>
+<script type="text/javascript">
+
+    var listData = [];
+    //var contentData = [];
+    var cur_list_time;
+
+    apiready = function(){
+        api.setFrameAttr({
+            name: 'frame0',
+            bounces:false
+        });
+        cur_list_time = new Date().getTime();
+        getPosts();
+    };
+
+    function getPosts(){
+        var query = api.require('query');
+        var model = api.require('model');
+
+        api.showProgress({
+            style: 'default',
+            animationType: 'fade',
+            title: '加载帖子中...',
+            text: '先喝杯茶...',
+            modal: false
+        });
+
+        query.createQuery(function(ret,err){
+        	if(ret && ret.qid){
+                var qid = ret.qid;
+
+                query.whereLessThanOrEqual({
+                    qid : qid,
+                    value : cur_list_time,
+                    column : 'time'
+                });
+
+                query.limit({
+                    qid : qid,
+                    value : 20
+                });
+
+                query.desc({
+                    qid : qid,
+                    column : 'time'
+                });
+
+
+                model.findAll({
+                    class: 'Forum',
+                    qid: qid
+                },function(ret,err){
+                    if(ret){
+                        for(var i in ret){
+                            cur_list_time = ret[i].time - 1;
+                            //contentData.push(ret[i].content);
+                            listData.push({
+                                imgPath : '',
+                                title : ret[i].title,
+                                subTitle :　ret[i].poster,
+                                remark : ret[i].createdAt.substr(5,5),
+                                uid : ret[i].id,
+                                content : ret[i].content,
+                                rightBtns : [{
+                                    bgColor: '#388e8e',
+                                    activeBgColor: '',
+                                    width: 70,
+                                    title: '删除',
+                                    titleSize: 12,
+                                    titleColor: '#fff',
+                                    icon: '',
+                                    iconWidth: 20
+                                }]
+                            });
+                        }
+                    }
+                    openUIList();
+                });
+
+            }
+        });
+
+    }
+
+    function openUIList(){
+        var UIListView = api.require('UIListView');
+        var curUser = $api.getStorage('current user');
+        var query = api.require('query');
+        var model = api.require('model');
+
+        UIListView.open({
+            rect: {
+                x: 0,
+                y: $('.topoffset').position().top,
+                w: api.winWidth,
+                h: api.frameHeight - $('.topoffset').position().top
+            },
+            data : listData,
+            styles: {
+                borderColor: '#696969',
+                item: {
+                    bgColor: '#FFFFFF',
+                    activeBgColor: '#C0C0C0',
+                    height: 55.0,
+                    imgWidth: 40,
+                    imgHeight: 40,
+                    imgCorner: 4,
+                    placeholderImg: '',
+                    titleSize: 15.0,
+                    titleColor: '#000',
+                    subTitleSize: 12.0,
+                    subTitleColor: '#000',
+                    remarkColor: '#000',
+                    remarkSize: 16,
+                    remarkIconWidth: 30
+                }
+            },
+            fixedOn: api.frameName
+        }, function(ret, err){
+            if( ret ){
+                if(ret.eventType == 'clickContent'){
+                    var dataIndex = ret.index;
+                    UIListView.getDataByIndex({
+                        index: dataIndex
+                    }, function(ret, err){
+                        if( ret ){
+                            api.openWin({
+                                name: 'content',
+                                url: './win_post.html',
+                                pageParam: {
+                                    content : ret.data.content,
+                                    postTime : ret.data.remark,
+                                    poster : ret.data.subTitle,
+                                    postTitle : ret.data.title
+                                }
+                            });
+                        }else{
+                             alert( JSON.stringify( err ) );
+                        }
+                    });
+                }
+            }else{
+                 alert( JSON.stringify( err ) );
+            }
+        });
+        UIListView.setRefreshFooter({
+            loadingImg: 'widget://image/loading_more.gif',
+            bgColor: '#F5F5F5',
+            textColor: '#8E8E8E',
+            textUp: '上拉加载更多...',
+            textDown: '松开开始加载...',
+            showTime: true
+        }, function(ret, err){
+            if( ret ){
+                refreshList();
+            }else{
+                alert( JSON.stringify( err ) );
+            }
+        });
+        UIListView.setRefreshHeader({
+            loadingImg: 'widget://image/loading_more.gif',
+            bgColor: '#F5F5F5',
+            textColor: '#8E8E8E',
+            textUp: '下拉加载更多...',
+            textDown: '松开开始加载...',
+            showTime: true
+        }, function(ret, err){
+            if( ret ){
+                cur_list_time = new Date().getTime();
+                listData.length = 0;
+                refreshList();
+            }else{
+                alert( JSON.stringify( err ) );
+            }
+        });
+        api.hideProgress();
+    }
+
+    function refreshList(){
+        var UIListView = api.require('UIListView');
+        UIListView.close();
+        getPosts();
+    }
+
+    function fnSearch(){
+        var curUser = $api.getStorage('current user');
+        var UISearchBar = api.require('UISearchBar');
+        var query = api.require('query');
+        var model = api.require('model');
+        var relation = api.require('relation');
+        UISearchBar.open({
+            placeholder: '请输入搜索关键字',
+            historyCount: 10,
+            showRecordBtn: false,
+            texts: {
+                cancelText: '取消',
+                clearText: '清除搜索记录'
+            },
+            styles: {
+                navBar: {
+                    bgColor: '#FFFFFF',
+                    borderColor: '#ccc'
+                },
+                searchBox: {
+                    bgImg: '',
+                    color: '#000',
+                    height: 44
+                },
+                cancel: {
+                    bg: 'rgba(0,0,0,0)',
+                    color: '#D2691E',
+                    size: 16
+                },
+                list: {
+                    color: '#696969',
+                    bgColor: '#FFFFFF',
+                    borderColor: '#eee',
+                    size: 16
+                },
+                clear: {
+                    color: '#000000',
+                    borderColor: '#ccc',
+                    size: 16
+                }
+            }
+        }, function(ret, err){
+            if( ret ){
+                if(ret.eventType == 'search' || ret.eventType == 'history'){
+                    api.showProgress({
+                        style: 'default',
+                        animationType: 'fade',
+                        title: '努力搜索中...',
+                        text: '先喝杯茶...',
+                        modal: false
+                    });
+
+                    var text = ret.text;
+                    var listData = [];
+                    query.createQuery(function(ret,err){
+                    	if(ret && ret.qid){
+                            var qid = ret.qid;
+                            query.whereEqual({
+                                qid : qid,
+                                value : text,
+                                column : 'username'
+                            });
+
+                            model.findAll({//找用户
+                                class: 'user',
+                                qid: qid
+                            },function(ret,err){
+                                if(ret){
+                                    for(var i in ret){
+                                        listData.push({
+                                            imgPath : '',
+                                            title : ret[i].username,
+                                            subTitle : '',
+                                            remark : '用户',
+                                            icon : '',
+                                            uid : ret[i].id,
+                                            rightBtns : [{
+                                                bgColor: '#388e8e',
+                                                activeBgColor: '',
+                                                width: 70,
+                                                title: '添加好友',
+                                                titleSize: 12,
+                                                titleColor: '#fff',
+                                                icon: '',
+                                                iconWidth: 20
+                                            }]
+                                        });
+                                    }
+
+                                    query.createQuery(function(ret,err){
+                                    	if(ret && ret.qid){
+                                            var qid = ret.qid;
+                                            query.whereLike({
+                                                qid : qid,
+                                                value : text,
+                                                column : 'title'
+                                            });
+
+                                            model.findAll({//找帖子
+                                                class: 'Forum',
+                                                qid: qid
+                                            },function(ret,err){
+                                                if(ret){
+                                                    for(var i in ret){
+                                                        listData.push({
+                                                            imgPath : '',
+                                                            title : ret[i].title,
+                                                            subTitle : ret[i].poster,
+                                                            remark : '主题帖',
+                                                            icon : '',
+                                                            uid : ret[i].id,
+                                                            time : ret[i].createdAt,
+                                                            content : ret[i].content
+                                                        });
+                                                    }
+                                                    api.hideProgress();
+                                                    api.openWin({//打开搜索结果界面
+                                                        name: 'search_result',
+                                                        url: './search_result.html',
+                                                        pageParam: {
+                                                            listData : listData,
+                                                            searchText : text
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+
+                        }
+                    });
+                }
+            }else{
+                 alert( JSON.stringify( err ) );
+            }
+        });
+
+    }
+
+    function openNewWin( name ){
+        api.openWin({
+            name: name,
+            url: './' + name + '.html',
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+        <title>title</title>
+        <link rel="stylesheet" type="text/css" href="../css/api.css" />
+        <link rel="stylesheet" type="text/css" href="../css/common.css" />
+        <link rel="stylesheet" type="text/css" href="../css/aui.css" />
+        <style>
+            html,
+            body {
+                display: -webkit-box;
+                -webkit-box-orient: vertical;
+            }
+            .content{
+                -webkit-box-flex:1;
+            }
+            .detail-header{
+                border-bottom: 1px solid #CDCDCD;
+                background-color: #FFFFFF;
+            }
+            .back{
+                background-size: 30px!important;
+                background-image: url("../image/previous_arrow@2x.png");
+                background-position: right!important;
+            }
+
+            .detail-header .btn{
+                padding:25px;
+            }
+            .title{
+                color: #000000;
+                text-align: center;
+                line-height:50px;
+                font-size: 18px;
+            }
+            .text{
+                text-align: center;
+            }
+        </style>
+    </head>
+
+    <body>
+        <header class="aui-bar aui-bar-nav">
+        <a class="aui-pull-left aui-btn">
+            <span class="aui-iconfont aui-icon-left" onclick="api.closeWin()"></span>
+        </a>
+        <div class="aui-title" id="title">xxx</div>
+        </header>
+        <div class="text hidden">未找到结果</div>
+        <div class='offset' id='offset'></div>
+    </body>
+    <script type="text/javascript" src="../script/api.js"></script>
+    <script src="../script/zepto.min.js"></script>
+    <script type="text/javascript">
+        apiready = function() {
+            curUser = $api.getStorage('current user');
+            api.showProgress({
+                style: 'default',
+                animationType: 'fade',
+                title: '搜索中...',
+                text: '先喝杯茶...',
+                modal: false
+            });
+            document.getElementById("title").innerHTML = '"' + api.pageParam.searchText + '"' + "的搜索结果" ;
+            openUIList();
+        };
+
+        var curUser;
+
+        function openUIList(){
+            var UIListView = api.require("UIListView");
+            if(api.pageParam.listData.length == 0){
+                $('.text').removeClass('hidden');
+            }
+            else{
+                UIListView.open({
+                    rect: {
+                        x: 0,
+                        y: $('.offset').position().top,
+                        w: api.winWidth,
+                        h: api.frameHeight - $('.offset').position().top
+                    },
+                    data: api.pageParam.listData,
+                    styles: {
+                        borderColor: '#696969',
+                        item: {
+                            bgColor: '#AFEEEE',
+                            activeBgColor: '#F5F5F5',
+                            height: 55.0,
+                            imgWidth: 40,
+                            imgHeight: 40,
+                            imgCorner: 4,
+                            placeholderImg: '',
+                            titleSize: 12.0,
+                            titleColor: '#000',
+                            subTitleSize: 12.0,
+                            subTitleColor: '#000',
+                            remarkColor: '#000',
+                            remarkSize: 16,
+                            remarkIconWidth: 30
+                        }
+                    },
+                    fixedOn: api.frameName
+                }, function(ret, err){
+                    if( ret ){
+                        if(ret.eventType == 'clickContent' || ret.eventType == 'clickRemark'){//点击搜索结果的内容和备注
+                            UIListView.getDataByIndex({
+                                index: ret.index
+                            }, function(ret, err){
+                                if( ret ){
+                                    if(ret.data.remark == '用户'){//搜索结果为用户
+                                        api.openWin({
+                                            name: 'my_info',
+                                            url: './my_info.html',
+                                            pageParam: {
+                                                targetUser : ret.data.title
+                                            }
+                                        });
+                                    }
+                                    else if(ret.data.remark == '主题帖'){//搜索结果为主题帖
+                                        api.openWin({
+                                            name: 'content',
+                                            url: './win_post.html',
+                                            pageParam: {
+                                                content : ret.data.content,
+                                                postTime : ret.data.time,
+                                                poster : ret.data.subTitle,
+                                                postTitle : ret.data.title
+                                            }
+                                        });
+                                    }
+                                }else{
+                                     alert( JSON.stringify( err ) );
+                                }
+                            });
+
+                        }
+                    }else{
+                         alert( JSON.stringify( err ) );
+                    }
+                });
+
+            }
+            api.hideProgress();
+        }
+    </script>
+
+</html>

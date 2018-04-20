@@ -1,0 +1,248 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>聊天界面</title>
+    <link rel="stylesheet" type="text/css" href="../css/aui.css" />
+    <style type="text/css">
+        .search-input {
+            height: 1.6rem;
+            line-height: 1.6rem;
+            background: #f5f5f5;
+            border-radius: 30px;
+            position: relative;
+            font-family:"aui_iconfont" !important;
+            text-align: left;
+            padding-left: 1.5rem;
+            color: #999999;
+        }
+        .search-input:after {
+            position: absolute;
+            left: 0;
+            padding-left: 0.5rem;
+            content: "\e615";
+        }
+    </style>
+</head>
+<body>
+    <footer class="aui-bar aui-bar-tab">
+        <div class="aui-searchbar">
+            <div class="aui-searchbar-input aui-border-radius">
+                <input type="text" placeholder="输入内容..." id="inputLetter">
+            </div>
+            <div class="aui-bar-tab-item aui-padded-b-5 aui-padded-r-5" tapmode="aui-active" style="width: 2.2rem;" onclick="sendPicture()">
+                <index class="aui-iconfont aui-icon-image"></index>
+            </div>
+            <div class="aui-bar-tab-item aui-padded-b-5 aui-padded-r-5" tapmode style="width: 2.2rem;background-color: #ebeced;" onclick="sendContent()">
+                <div class="aui-btn aui-btn-info">提交</div>
+            </div>
+        </div>
+    </footer>
+
+    <section class="aui-chat">
+    </section>
+
+    <div class="aui-invisible" style="height:60px;background-color:#FFFFFF;"></div>
+</body>
+<script type="text/javascript" src="../script/api.js" ></script>
+<script type="text/javascript" src="../script/APICloud-rest-SHA1.js" ></script>
+<script type="text/javascript" src="../script/remotedb.js" ></script>
+<script type="text/javascript" src="../script/zepto.min.js" ></script>
+<script type="text/javascript">
+    apiready = function () {
+        curUser = $api.getStorage('current user');
+        curUserAvatar = $api.getStorage('current user avatar');
+        letters = api.pageParam.letters;
+        openChat();
+    }
+
+    var curUser, curUserAvatar, cur_list_time = 0, letters, client, index;
+
+    function openChat(){
+        for(index = 0; index < letters.length; index++){
+
+            var head = $api.dom('.aui-chat');
+            var letterTime = letters[index].time;
+
+            if(letterTime - cur_list_time > 300000){//两条消息间超过五分钟则显示时间
+                var str = '<div class="aui-chat-header">';
+                str += new Date(letterTime).toLocaleString();
+                str += '</div>';
+                $api.append(head, str);
+            }
+
+            cur_list_time = letterTime;
+
+            var str = '<div class="aui-chat-item ';
+            if(letters[index].from == curUser){
+                str += 'aui-chat-right"';
+            }
+            else{
+                str += 'aui-chat-left"';
+            }
+
+            str += 'id="' + index + '">';
+
+                str += '<div class="aui-chat-media">';
+                    if(letters[index].from == curUser){
+                        str += '<img src="' + curUserAvatar + '" />';
+                    }
+                    else{
+                        str += '<img src="' + api.pageParam.targetUserAvatar + '" />';
+                    }
+                str += '</div>';
+
+                str += '<div class="aui-chat-inner">';
+                    str += '<div class="aui-chat-name">' + letters[index].from + '</div>';
+                    str += '<div class="aui-chat-content">';
+                        str += '<div class="aui-chat-arrow"></div>';
+                        str += letters[index].Content;
+                    str += '</div>';
+                str += '</div>';
+
+            $api.append(head, str);
+        }
+    }
+
+    function sendContent(){//发送输入框内的内容
+        var content = $api.dom('#inputLetter').value;
+        addLetter(content);
+    }
+
+    function sendPicture(){//发送图片，先将图片上传至file表再调用addLetter
+        api.confirm({
+                title : "图片选取",
+                msg : "您想要从哪里选取照片？",
+                buttons : ["拍照", "相册", "取消"]
+        }, function(ret, err) {
+                if (3 == ret.buttonIndex) {
+                        return;
+                }
+                var sourceType = "album";
+                if (1 == ret.buttonIndex) {
+                        sourceType = "camera";
+                }
+                api.getPicture({
+                        sourceType : sourceType,
+                        encodingType : "jpg",
+                        mediaValue : "pic",
+                }, function(ret, err) {
+                        if (ret) {
+                            var picturePath = ret.data;
+                            client = new Resource('A6061114726582','F70FEF7F-7BB8-5B9C-EEB3-41D3963C3F0C');//JS-SDK的初始化
+                            var File = client.Factory('file');
+                            File.save({
+                                file : {
+                                    isFile : true,
+                                    path : picturePath,
+                                    values : {
+                                        filename : curUser + '_LetterImage'
+                                    }
+                                }
+                            },function(ret,err){
+                                if(ret){
+                                    addLetter('<img class="uimg aui-margin-b-10" src="' + ret.url + '"><br>');
+                                }
+                                else{
+                                    api.toast({
+                                        msg: '图片上传失败！',
+                                        duration: 2000,
+                                        location: 'bottom'
+                                    });
+                                }
+                            });
+                        }
+                });
+        });
+    }
+
+    function addLetter( content ){//在聊天界面中加入本用户发送的内容为content的聊天消息
+        client = new Resource('A6061114726582','F70FEF7F-7BB8-5B9C-EEB3-41D3963C3F0C');//JS-SDK的初始化
+        var Model = client.Factory('Letters');
+
+        var letter = {
+            from : curUser,
+            to : api.pageParam.targetUser,
+            fromID : $api.getStorage('current user id'),
+            toID : api.pageParam.targetUserID,
+            Content : content,
+            time : new Date().getTime()
+        }
+
+        letters.push(letter);
+
+        var head = $api.dom('.aui-chat');
+        var letterTime = letters[index].time;
+
+        if(letterTime - cur_list_time > 300000){//两条消息间超过五分钟则显示时间
+            var str = '<div class="aui-chat-header">';
+            str += new Date(letterTime).toLocaleString();
+            str += '</div>';
+            $api.append(head, str);
+        }
+
+        cur_list_time = letterTime;
+
+        var str = '<div class="aui-chat-item ';
+        if(letters[index].from == curUser){
+            str += 'aui-chat-right"';
+        }
+        else{
+            str += 'aui-chat-left"';
+        }
+
+        str += 'id="' + index + '">';
+
+            str += '<div class="aui-chat-media">';
+                if(letters[index].from == curUser){
+                    str += '<img src="' + curUserAvatar + '" />';
+                }
+                else{
+                    str += '<img src="' + api.pageParam.targetUserAvatar + '" />';
+                }
+            str += '</div>';
+
+            str += '<div class="aui-chat-inner">';
+                str += '<div class="aui-chat-name">' + letters[index].from + '</div>';
+                str += '<div class="aui-chat-content">';
+                    str += '<div class="aui-chat-arrow"></div>';
+                    str += letters[index].Content;
+                str += '</div>';
+                str += '<div class="aui-chat-status">';
+                    str += '<i class="aui-iconfont aui-icon-wechat-circle aui-text-info"></i>'
+                str += '</div>';
+            str += '</div>';
+
+        $api.append(head, str);
+
+        Model.save(letter,function(ret,err){//上传letter，并根据上传成功与否改变icon样式
+            if(ret){
+                var icon = $api.dom('.aui-icon-wechat-circle');
+                $api.removeCls(icon, 'aui-icon-wechat-circle');
+                $api.removeCls(icon, 'aui-text-info');
+                $api.addCls(icon, 'aui-icon-correct');
+                $api.addCls(icon, 'aui-text-success');
+                index = index + 1;
+                $api.dom('#inputLetter').value = '';
+                api.sendEvent({//改变frame1内的letters
+                    name: 'lettersChange',
+                    extra: {
+                        targetUser : api.pageParam.targetUser,
+                        letters : letters
+                    }
+                });
+            }
+            else{
+                var icon = $api.dom('.aui-icon-wechat-circle');
+                $api.removeCls(icon, 'aui-icon-wechat-circle');
+                $api.removeCls(icon, 'aui-text-info');
+                $api.addCls(icon, 'aui-icon-close');
+                $api.addCls(icon, 'aui-text-danger');
+                letters.pop();
+            }
+        });
+    }
+</script>
+</html>

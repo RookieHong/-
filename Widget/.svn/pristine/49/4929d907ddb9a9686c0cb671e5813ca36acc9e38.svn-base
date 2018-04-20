@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>朋友</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/style.css"/>
+    <style>
+        .empty{ text-align: center; padding: 120px 0; }
+
+        .search_box {
+            width: 100%;
+            height: 43px;
+            background-color: #fff;
+            box-sizing: border-box;
+            padding-top: 7px;
+            position: relative;
+            border: 1px solid #e8e8e8;
+        }
+
+        .search {
+            width: 100%;
+            height: 27px;
+            line-height: 27px;
+            box-sizing: border-box;
+            padding-left: 31px;
+            font-size: 13px;
+            color: #999;
+            background-color: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            background-image: url(../image/search.png);
+            background-size: 15px 15px;
+            background-repeat: no-repeat;
+            background-position: 13px center;
+        }
+
+        .search input {
+            width: 100%;
+            height: 27px;
+            line-height: 16px;
+            outline: none;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="search_box" id="header">
+        <div class="search" onclick="search()">请输入查找的用户名...</div>
+    </div>
+</body>
+
+<script type="text/javascript" src="../script/api.js"></script>
+<script type="text/javascript">
+
+    var listData = [];
+
+    apiready = function(){
+        api.setFrameAttr({
+            name: 'frame0',
+            bounces:false
+        });
+    };
+
+    //朋友列表
+    function openUIList(){
+      var UIListView = api.require('UIListView');
+      var dialogBox = api.require('dialogBox');
+      var curUser = $api.getStorage('current user');
+      var query = api.require('query');
+      var model = api.require('model');
+      var relation = api.require('relation');
+      UIListView.open({
+          rect: {
+              x: 0,
+              y: 43,
+              w: api.winWidth,
+              h: api.frameHeight
+          },
+          fixedOn: api.frameName,
+          data: listData,
+          styles: {
+              borderColor: '#696969',
+              item: {
+                  bgColor: '#6ab494',
+                  activeBgColor: '#F5F5F5',
+                  height: 55.0,
+                  imgWidth: 40,
+                  imgHeight: 40,
+                  imgCorner: 4,
+                  placeholderImg: '',
+                  titleSize: 12.0,
+                  titleColor: '#000',
+                  subTitleSize: 12.0,
+                  subTitleColor: '#000',
+                  remarkColor: '#000',
+                  remarkSize: 16,
+                  remarkIconWidth: 30
+              }
+          }
+      }, function(ret, err) {
+        if (ret) {
+            if(ret.eventType == 'clickRightBtn'){
+                var click = ret.btnIndex;
+                UIListView.getDataByIndex({
+                    index: ret.index
+                }, function(ret, err){
+                });
+            }
+            else if(ret.eventType == 'clickContent'){
+                UIListView.getDataByIndex({
+                    index: ret.index
+                }, function(ret, err){
+                    if( ret ){}else{
+                         alert( JSON.stringify( err ) );
+                    }
+                });
+
+            }
+        } else {
+
+        }
+      });
+      UIListView.setRefreshHeader({
+          loadingImg: 'widget://image/loading_more.gif',
+          bgColor: '#F5F5F5',
+          textColor: '#8E8E8E',
+          textDown: '下拉可以刷新...',
+          textUp: '松开开始刷新...',
+          showTime: true
+      }, function(ret, err){
+          if( ret ){
+            refreshList();
+          }else{
+            alert( JSON.stringify( err ) );
+          }
+      });
+    }
+
+    function refreshList(){
+        var UIListView = api.require('UIListView');
+        UIListView.close();
+        listData.length = 0;
+    }
+
+</script>
+</html>

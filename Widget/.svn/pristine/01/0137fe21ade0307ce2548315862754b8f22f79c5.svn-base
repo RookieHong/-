@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <link rel="stylesheet" type="text/css" href="../css/api.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/common.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/aui.css"/>
+</head>
+<style>
+    body {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+    }
+
+    .post {display: -webkit-box;padding: 10px 10px 15px 10px;background-color: #f9f9f9;}
+    .post .userlogo {margin-right: 10px;}
+    .post .userlogo img {width: 40px;vertical-align: top;border-radius: 20px;}
+    .post .rightcol {-webkit-box-flex: 1;}
+    .post .rightcol .usertitle {font-size: 0.9em; color: #666;line-height: 40px;}
+    .post .rightcol .usertitle .poster{font-size: 1em; color: #507DAF; margin-right: 5px;}
+    .post .rightcol .usertitle .postTime{float: right; font-size: 0.6em; color: #999;}
+    .post .rightcol .postcontent {font-size: 1em; line-height: 1.3em;padding-top: 5px;}
+    .postTitle {
+        padding: 10px 0;
+        display: block;
+        text-align: center;
+        font-size: 30px;
+        font-weight: bolder;
+        color: #000;
+        margin: 0 0 5px;
+        line-height: 26px;
+        word-wrap: break-word;
+    }
+
+</style>
+<body>
+    <header class="aui-bar aui-bar-nav">
+        <a class="aui-pull-left aui-btn" tapmode="background: #D8D9DA ;"onclick="api.closeWin()">
+            <span class="aui-iconfont aui-icon-left"></span>
+        </a>
+        <div class="aui-title">主题帖</div>
+        <a class="aui-pull-right aui-btn" onclick="comment()">
+            <span class="aui-iconfont aui-icon-comment"></span>
+        </a>
+    </header>
+
+    <div class="aui-info aui-margin-t-10 aui-padded-l-10 aui-padded-r-10 hidden">
+        <div class="aui-info-item">
+            <img id="avatar" src="../image/login_username_icon@2x.png" style="width:1.5rem" class="aui-img-round" onclick="openHomepage()"/>
+            <span class="aui-margin-l-5" onclick="openInfo()" id="poster">xxx</span>
+        </div>
+        <div class="aui-info-item" id="postTime">2015-07-13 22:31</div>
+    </div>
+
+    <div class="post hidden">
+    	<div class="rightcol">
+            <div class="postTitle" id="postTitle">xxxx</div>
+    		<p class="postcontent" id="postcontent">xxxxx</p>
+    	</div>
+    </div>
+<script src="../script/api.js"></script>
+<script src="../script/APICloud-rest-SHA1.js"></script>
+<script src="../script/remotedb.js"></script>
+<script>
+
+    apiready = function () {
+        $api.fixStatusBar( $api.dom('header') );
+        Init();
+    }
+
+    function comment(){
+        api.openWin({
+            name:'win_comment',
+            url:'./win_comment.html',
+            pageParam: {
+                postID : api.pageParam.postID,
+                poster : api.pageParam.poster
+            }
+        })
+    }
+
+    function openHomepage(){
+        api.openWin({
+            name: 'win_homepage',
+            url: './win_homepage.html',
+            pageParam: {
+                targetUser : api.pageParam.poster,
+                userAvatar : document.getElementById("avatar").src
+            }
+        });
+    }
+
+    function Init(){
+        fnGet('user',{"username":api.pageParam.poster},0,5
+            ,function(ret,err){
+                if(ret){
+                    var body = ret.body[0];
+                    document.getElementById("avatar").src = body.avatar.url;
+                    document.getElementById("postcontent").innerHTML = api.pageParam.content;
+                    document.getElementById("poster").innerHTML = api.pageParam.poster;
+                    document.getElementById("postTime").innerHTML = api.pageParam.postTime;
+                    document.getElementById("postTitle").innerHTML = api.pageParam.postTitle;
+                    $api.removeCls($api.dom('.aui-info'),'hidden');
+                    $api.removeCls($api.dom('.post'),'hidden');
+                }
+                else{
+                    alert(JSON.stringify(err));
+                }
+            });
+    }
+</script>
+</body>
+</html>

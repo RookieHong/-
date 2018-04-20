@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="copyright" content="www.apicloud.com" />
+	<meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+	<title>个人中心</title>
+	<link rel="stylesheet" type="text/css" href="../css/api.css" />
+	<link rel="stylesheet" type="text/css" href="../css/common.css" />
+	<link rel="stylesheet" type="text/css" href="../css/aui.css" />
+	<style type="text/css">
+		.text-white {
+			color: #ffffff !important;
+		}
+		.aui-grid [class*=aui-col-] {
+			padding: 0.75rem 0;
+		}
+	</style>
+</head>
+
+<body>
+    <section class="aui-content" id="user-info">
+        <div class="aui-list aui-media-list aui-list-noborder aui-bg-info aui-margin-b-15">
+            <div class="aui-list-item aui-list-item-middle">
+				<!--登陆用户-->
+                <div class="aui-media-list-item-inner hidden" id="login_user" onclick="openNewWin( 'my_info' )">
+                    <div class="aui-list-item-media" style="width:3rem;">
+                        <img src="../image/user_weiboimage_board@2x.png" class="aui-img-round" id="avatar">
+                    </div>
+                    <div class="aui-list-item-inner aui-list-item-arrow">
+                        <div class="aui-list-item-text text-white aui-font-size-18" id="login_username">xxx</div>
+                    </div>
+                </div>
+				<!--非登陆用户-->
+				<div class="aui-media-list-item-inner" id="nologin_user" onclick="openNewWin( 'frm_login' )">
+                    <div class="aui-list-item-media" style="width:3rem;">
+                        <img src="../image/user_weiboimage_board@2x.png" class="aui-img-round">
+                    </div>
+                    <div class="aui-list-item-inner aui-list-item-arrow">
+                        <div class="aui-list-item-text text-white aui-font-size-18">立即登录</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="aui-content">
+        <ul class="aui-list aui-list-in aui-margin-b-15 hidden" id="useritems">
+            <li class="aui-list-item">
+                <div class="aui-list-item-label-icon">
+                    <i class="aui-iconfont aui-icon-date aui-text-info"></i>
+                </div>
+                <div class="aui-list-item-inner aui-list-item-arrow">
+                    <div class="aui-list-item-title">浏览记录</div>
+                </div>
+            </li>
+            <li class="aui-list-item">
+                <div class="aui-list-item-label-icon">
+                    <i class="aui-iconfont aui-icon-like aui-text-danger"></i>
+                </div>
+                <div class="aui-list-item-inner aui-list-item-arrow">
+                    <div class="aui-list-item-title">我的收藏</div>
+                </div>
+            </li>
+        </ul>
+        <ul class="aui-list aui-list-in aui-margin-b-15">
+            <li class="aui-list-item">
+                <div class="aui-list-item-label-icon">
+                    <i class="aui-iconfont aui-icon-gear aui-text-info"></i>
+                </div>
+                <div class="aui-list-item-inner aui-list-item-arrow">
+                    <div class="aui-list-item-title">设置</div>
+                </div>
+            </li>
+            <li class="aui-list-item">
+                <div class="aui-list-item-label-icon">
+                    <i class="aui-iconfont aui-icon-share aui-text-warning"></i>
+                </div>
+                <div class="aui-list-item-inner aui-list-item-arrow">
+                    <div class="aui-list-item-title">分享治郁</div>
+                </div>
+            </li>
+			<li class="aui-list-item">
+                <div class="aui-list-item-label-icon">
+                    <i class="aui-iconfont aui-icon-info aui-text-warning"></i>
+                </div>
+                <div class="aui-list-item-inner aui-list-item-arrow">
+                    <div class="aui-list-item-title">关于治郁</div>
+                </div>
+            </li>
+        </ul>
+    </section>
+	<p><div class="aui-btn aui-btn-danger aui-btn-block aui-btn-outlined aui-btn-sm hidden" id="exitbtn" onclick="logout()">退出登录</div></p>
+</body>
+
+<script type="text/javascript" src="../script/api.js"></script>
+<script type="text/javascript" src="../script/zepto.min.js"></script>
+<script type="text/javascript" src="../script/APICloud-rest-SHA1.js"></script>
+<script type="text/javascript" src="../script/remotedb.js"></script>
+<script type="text/javascript">
+	apiready = function(){
+		api.setFrameAttr({
+            name: 'frame3',
+            bounces : false
+        });
+        checkUserId();
+	}
+
+	var curUser;
+
+	function checkUserId(){
+        if(curUser = $api.getStorage("current user")){
+            document.getElementById('login_username').innerHTML = curUser;
+            $("#login_user").removeClass("hidden");
+            $("#nologin_user").addClass("hidden");
+			$('#exitbtn').removeClass('hidden');
+			$('#useritems').removeClass('hidden');
+
+			fnGet('user',{"username":curUser},0,5
+	            ,function(ret,err){
+	                if(ret){
+	                    var body = ret.body[0];
+	                    document.getElementById('avatar').src = body.avatar.url;
+	                }
+	                else{
+	                    alert(JSON.stringify(err));
+	                }
+	            });
+        }else{
+			$("#login_user").addClass("hidden");
+            $("#nologin_user").removeClass("hidden");
+			$('#exitbtn').addClass('hidden');
+			$('#useritems').addClass('hidden');
+        }
+    }
+
+	//打开新页面函数
+	function openNewWin (type) {
+		if(type == 'my_info'){
+			api.openWin ({
+				name: type,
+				url: './'+type+'.html',
+				rect:{
+					x:0,
+					y:0,
+					w:'auto',
+					h:'auto'
+				},
+				bounces: false,
+				delay:200,
+				pageParam : {
+					targetUser : curUser
+				}
+			});
+		}
+		else{
+			api.openWin ({
+				name: type,
+				url: './'+type+'.html',
+				rect:{
+					x:0,
+					y:0,
+					w:'auto',
+					h:'auto'
+				},
+				bounces: false,
+				delay:200
+			});
+		}
+	}
+
+	function logout() {
+        api.showProgress();
+        var user = api.require('user');
+        user.logout(function(ret, err){
+            api.hideProgress();
+            if(ret){
+                api.confirm({
+                    title: '确定要登出账号?',
+                    buttons:[ '取消', '确定']
+                },function(ret,err){
+                    if(ret.buttonIndex == 2){
+                        $api.rmStorage('current user');
+                        api.execScript({
+                            name:'root',
+                            frameName:"frame3",
+                            script:'checkUserId()'
+                        });
+                        checkUserId();
+                    }else{
+
+                    }
+                });
+            }else{
+                api.toast({msg: err.message, location: "middle"})
+            }
+        });
+    }
+</script>
+</html>

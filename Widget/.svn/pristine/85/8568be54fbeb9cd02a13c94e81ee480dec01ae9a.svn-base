@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <link rel="stylesheet" type="text/css" href="../css/api.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/common.css"/>
+</head>
+<style>
+    body {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+    }
+
+    .post {display: -webkit-box;padding: 10px 10px 15px 10px;background-color: #f9f9f9;}
+    .post .userlogo {margin-right: 10px;}
+    .post .userlogo img {width: 40px;vertical-align: top;border-radius: 20px;}
+    .post .rightcol {-webkit-box-flex: 1;}
+    .post .rightcol .usertitle {font-size: 0.9em; color: #666;line-height: 40px;}
+    .post .rightcol .usertitle .poster{font-size: 1em; color: #507DAF; margin-right: 5px;}
+    .post .rightcol .usertitle .postTime{float: right; font-size: 0.6em; color: #999;}
+    .post .rightcol .postcontent {font-size: 1em; line-height: 1.3em;padding-top: 5px;}
+    .postTitle {
+        padding: 10px 0;
+        display: block;
+        text-align: center;
+        font-size: 30px;
+        font-weight: bolder;
+        color: #000;
+        margin: 0 0 5px;
+        line-height: 26px;
+        word-wrap: break-word;
+    }
+
+    .footer {
+        background-color: #F5F5F6;
+    }
+
+    .detail-header {
+        border-bottom: 1px solid #CDCDCD;
+    }
+
+    .back {
+        background-image: url("../image/previous_arrow@2x.png");
+        background-position: right !important;
+
+    }
+
+    .replycount {
+
+        border-radius: 10px;
+        -webkit-border-top-right-radius: 0;
+        background-color: #CB393C;
+        color: #FFFFFF;
+        padding: 5px
+    }
+
+    .detail-header .reply {
+        padding: 10px;
+
+    }
+
+    .footer {
+        display: -webkit-box;
+    }
+
+    .footer a {
+        display: inline-block;
+
+        padding: 23px;
+    }
+
+    .share {
+        background-size: 40px;
+        background-image: url("../image/night_top_navigation_shareicon@2x.png");
+        background-position: center;;
+        background-repeat: no-repeat no-repeat;
+    }
+
+    .star {
+        background-size: 30px;
+        background-image: url("../image/night_icon_star_full@2x.png");
+        background-position: center;;
+        background-repeat: no-repeat no-repeat;
+    }
+
+    .replytext {
+        margin-top: 5px;
+        padding-left: 10px;
+        height: 40px;
+        margin-left: 10px;
+        display: block;
+        -webkit-box-flex: 1;
+        border: 1px solid #C7C7C7;
+        border-radius: 20px;
+        background-color: #FFFFFF;
+    }
+
+    .title{
+        line-height: 44px;
+        text-align: center;
+        margin-left: 49px;
+    }
+</style>
+<body>
+<header>
+    <div class="header detail-header">
+        <div class="btn back" tapmode="" onclick="api.closeWin()"></div>
+        <div class="title" id="title">主题帖</div>
+        <div class="reply" tapmode="" onclick="reply()"><span class="replycount">xxxx跟帖</span></div>
+    </div>
+</header>
+<div class="post">
+	<div class="rightcol">
+		<div class="usertitle">
+			<span class="userlogo" onclick="openInfo()"><img src="../image/login_username_icon@2x.png" alt=""></span>
+
+			<span class="poster" id="poster" onclick="openInfo()">xxxxx</span>
+            <span class="postTime" id="postTime">xxxxx</span>
+		</div>
+        <div class="postTitle" id="postTitle">xxxx</div>
+		<p class="postcontent" id="postcontent">xxxxx</p>
+	</div>
+</div>
+<script src="../script/api.js"></script>
+<script src="../script/zepto.min.js"></script>
+<script>
+
+    apiready = function () {
+        $api.fixStatusBar($api.dom( ".header" ));
+        var $headerH = $("header").height();
+        document.getElementById("postcontent").innerHTML = api.pageParam.content;
+        document.getElementById("poster").innerHTML = api.pageParam.poster;
+        document.getElementById("postTime").innerHTML = api.pageParam.postTime;
+        document.getElementById("postTitle").innerHTML = api.pageParam.postTitle;
+    }
+
+    function reply(){
+        api.openWin({
+            name:'win_reply',
+            url:'win_reply.html'
+        })
+    }
+
+    function openInfo(){
+        api.openWin({
+            name: 'my_info',
+            url: './my_info.html',
+            pageParam: {
+                targetUser : api.pageParam.poster
+            }
+        });
+
+    }
+</script>
+</body>
+</html>

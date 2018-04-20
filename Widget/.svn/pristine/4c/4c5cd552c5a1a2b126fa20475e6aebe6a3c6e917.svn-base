@@ -1,0 +1,171 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <title>评论</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/aui.css"/>
+    <style>
+        body {
+
+        }
+
+        .aui-padded-t-8 {
+        	padding-top: 0.40rem !important;
+        }
+
+    </style>
+</head>
+
+<body>
+    <header class="aui-bar aui-bar-nav">
+        <a class="aui-pull-left aui-btn" onclick="api.closeWin()">
+            <span class="aui-iconfont aui-icon-left"></span>
+        </a>
+        <div class="aui-title">评论</div>
+    </header>
+
+    <footer class="aui-bar aui-bar-tab aui-bg-default" id="footer">
+        <div class="aui-row">
+            <div class="aui-list-item-input aui-col-xs-9">
+                <input id="inputComment" type="text" placeholder="添加评论">
+            </div>
+            <div class="aui-list-item-btn aui-col-xs-3 aui-padded-t-8">
+                <div class="aui-btn aui-btn-info" onclick="postComment()">提交</div>
+            </div>
+        </div>
+    </footer>
+
+    <section class="aui-refresh-content">
+        <div class="aui-content">
+            <ul class="aui-list aui-media-list" id="list">
+            </ul>
+        </div>
+    </section>
+<script type="text/javascript" src="../script/api.js"></script>
+<script type="text/javascript" src="../script/aui-pull-refresh.js"></script>
+<script type="text/javascript" src="../script/zepto.min.js"></script>
+<script type="text/javascript" src="../script/APICloud-rest-SHA1.js"></script>
+<script type="text/javascript" src="../script/remotedb.js"></script>
+<script type="text/javascript" src="../script/aui-toast.js" ></script>
+<script>
+    apiready=function(){
+        $api.fixStatusBar($api.dom( "header" ));
+        getComments();
+    }
+
+    var client, listData;
+    var avatarData = [];
+
+    function getComments(){
+        api.showProgress({
+            style: 'default',
+            animationType: 'fade',
+            title: '加载评论中...',
+            text: '先喝杯茶...',
+            modal: false
+        });
+
+        client = new Resource('A6061114726582','F70FEF7F-7BB8-5B9C-EEB3-41D3963C3F0C');//JS-SDK的初始化
+        var Model = client.Factory("Forum");
+        Model.get({"_id":api.pageParam.postID,"_relation":"comments"},
+            function (ret,err) {
+                if(ret){
+                    listData = ret;
+                    getAvatars(0);
+                }
+                else{
+                    alert(JSON.stringify(err));
+                }
+            });
+    }
+
+    function getAvatars( index ){
+        var Model = client.Factory("user");
+        if(index < listData.length){
+            Model.query({
+              filter:{
+                where:{
+                  "username" : listData[index].poster
+                }
+              }
+            },function (ret,err) {
+                if(ret){
+                    ret = ret[0];
+                    avatarData.push(ret.avatar.url);
+                    getAvatars(index + 1);
+                }
+                else{
+                    alert(JSON.stringify(err));
+                }
+            });
+        }
+        else{
+            openComments();
+        }
+    }
+
+    function openComments(){
+        for(var i in listData){
+            var head = document.getElementById('list');
+            var el = document.createElement('li');
+            $api.attr(el, 'class', 'aui-list-item');
+            $api.attr(el, 'id', i);
+
+            var str = '<div class="aui-media-list-item-inner">';
+                str += '<div class="aui-list-item-media">';
+                    str += '<img src="' + avatarData[i] + '" class="aui-img-round" />';
+                str += '</div>';
+                str += '<div class="aui-list-item-inner">';
+                    str += '<div class="aui-list-item-text">';
+                        str += '<div class="aui-list-item-title">' + listData[i].poster + '</div>';
+                    str += '</div>';
+                    str += '<div class="aui-list-item-text">';
+                        str += listData[i].content;
+                    str += '</div>';
+                str += '</div>';
+                str += '<div class="aui-info" style="padding-top:0">';
+                    str += '<div class="aui-info-item">';
+                        var date = new Date(listData[i].createdAt);
+                        str += date.toLocaleString();
+                    str += '</div>';
+                str += '</div>';
+
+            var o = $api.html(el, str);
+            head.appendChild(o);
+        }
+        api.hideProgress();
+    }
+
+    function postComment(){
+        var curUser = $api.getStorage('current user');
+        if(curUser){
+            var content = $api.dom('#inputComment').value;
+            var Model = client.Factory("Forum");
+            var toast = new auiToast();
+            Model.save({"_id":api.pageParam.postID,"_relation":"comments"},{"poster" : curUser, "content" : content},
+                function (ret,err) {
+                    if(err){
+                        toast.fail({
+                            title : "提交失败！",
+                            duration : 1000
+                        });
+                        alert(JSON.stringify(err));
+                    }
+                    else{
+                        toast.success({
+                            title : "提交成功！",
+                            duration : 1000
+                        });
+                        $api.dom('#inputComment').value = '';
+                    }
+            });
+        }
+        else{
+            alert('请先登录！');
+        }
+    }
+</script>
+</body>
+</html>

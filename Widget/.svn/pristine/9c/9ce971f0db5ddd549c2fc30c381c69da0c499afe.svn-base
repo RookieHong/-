@@ -1,0 +1,144 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>个人主页</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../css/aui.css" />
+    <link rel="stylesheet" type="text/css" href="../css/common.css" />
+    <style type="text/css">
+        .user-info {
+            background-color: #ffffff;
+            padding: 0.75rem 0;
+        }
+        img.avatar {
+            display: block;
+            margin: 0 auto;
+            width: 20%;
+        }
+        .aui-list .aui-list-header {
+            background-color: #ffffff;
+            line-height: 1.2rem;
+        }
+        .aui-list .aui-list-item {
+            background-color: #f8f6ef;
+        }
+    </style>
+</head>
+<body>
+    <header class="aui-bar aui-bar-nav">
+    <a class="aui-pull-left aui-btn">
+        <span class="aui-iconfont aui-icon-left" onclick="api.closeWin()"></span>
+    </a>
+    <div class="aui-title" id="toptitle">个人主页</div>
+    </header>
+
+    <section class="aui-content user-info aui-text-center aui-margin-b-15">
+        <img src="../image/user_weiboimage_board@2x.png" class="avatar aui-img-round" id="avatar">
+        <h2 class="aui-margin-t-15" id="username"></h2>
+        <div class="aui-row aui-margin-t-15" id="otherUser">
+            <div class="aui-btn aui-btn-info">关注</div>
+            <div class="aui-btn aui-btn-info">私信</div>
+        </div>
+        <div class="aui-row aui-margin-t-15 hidden" id="currentUser">
+            <div class="aui-btn aui-btn-info" onclick="openInfo()">编辑个人资料</div>
+        </div>
+        <div class="aui-row aui-margin-t-15">
+            <div class="aui-col-xs-6 aui-border-r">
+                <big class="aui-text-default">0</big>
+                <div class="aui-gird-lable aui-font-size-12">关注</div>
+            </div>
+            <div class="aui-col-xs-6 aui-border-r">
+                <big class="aui-text-default">0</big>
+                <div class="aui-gird-lable aui-font-size-12">粉丝</div>
+            </div>
+        </div>
+    </section>
+    <section class="aui-content">
+        <ul class="aui-list aui-list-noborder">
+            <div class="aui-list-header">
+                <div>
+                    <i class="aui-iconfont aui-icon-my aui-text-danger"></i>
+                    个人中心
+                </div>
+            </div>
+            <li class="aui-list-item">
+                <div class="aui-list-item-inner aui-list-item-arrow">
+                    <div class="aui-list-item-title">我的帖子</div>
+                    <div class="aui-list-item-right">共888贴</div>
+                </div>
+            </li>
+            <li class="aui-list-item">
+                <div class="aui-list-item-inner aui-list-item-arrow">
+                    <div class="aui-list-item-title">常用联系人</div>
+                </div>
+            </li>
+            <div class="aui-list-header">
+                <div>
+                    <i class="aui-iconfont aui-icon-my aui-text-danger"></i>
+                    个人中心
+                </div>
+            </div>
+            <li class="aui-list-item">
+                <div class="aui-list-item-inner aui-list-item-arrow">
+                    <div class="aui-list-item-title">我的帖子</div>
+                    <div class="aui-list-item-right">共888贴</div>
+                </div>
+            </li>
+            <li class="aui-list-item">
+                <div class="aui-list-item-inner aui-list-item-arrow">
+                    <div class="aui-list-item-title">常用联系人</div>
+                </div>
+            </li>
+        </ul>
+    </section>
+</body>
+<script type="text/javascript" src="../script/api.js" ></script>
+<script type="text/javascript" src="../script/APICloud-rest-SHA1.js" ></script>
+<script type="text/javascript" src="../script/remotedb.js" ></script>
+<script type="text/javascript" src="../script/zepto.min.js" ></script>
+<script type="text/javascript">
+    apiready = function () {
+        Init();
+    }
+
+    var curUser;
+
+    function Init(){
+        curUser = $api.getStorage('current user');
+        if(api.pageParam.targetUser == curUser){
+            $('#currentUser').removeClass('hidden');
+            $('#otherUser').addClass('hidden');
+        }
+        document.getElementById('username').innerHTML = api.pageParam.targetUser;
+        if("userAvatar" in api.pageParam){
+            document.getElementById("avatar").src = api.pageParam.userAvatar;
+        }
+        else{
+            fnGet('user',{"username":api.pageParam.targetUser},0,5
+	            ,function(ret,err){
+	                if(ret){
+	                    var body = ret.body[0];
+	                    document.getElementById('avatar').src = body.avatar.url;
+	                }
+	                else{
+	                    alert(JSON.stringify(err));
+	                }
+	            });
+        }
+    }
+
+    function openInfo(){
+        api.openWin({
+            name: 'my_info',
+            url: './my_info.html',
+            pageParam: {
+                targetUser : curUser
+            }
+        });
+
+    }
+</script>
+</html>

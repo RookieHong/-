@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>中心广场</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/common.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/aui.css" />
+    <link rel="stylesheet" type="text/css" href="../css/aui-pull-refresh.css" />
+    <style>
+        body{
+
+        }
+    </style>
+</head>
+<body>
+    <section class="aui-refresh-content">
+        <div class="aui-content">
+            <ul class="aui-list aui-media-list" id="list">
+            </ul>
+        </div>
+    </section>
+
+<script type="text/javascript" src="../script/api.js"></script>
+<script type="text/javascript" src="../script/APICloud-rest-SHA1.js"></script>
+<script type="text/javascript" src="../script/remotedb.js"></script>
+<script type="text/javascript" src="../script/aui-pull-refresh.js"></script>
+<script type="text/javascript" src="../script/aui-scroll.js"></script>
+<script src="../script/zepto.min.js"></script>
+<script type="text/javascript">
+
+    var listData = [];
+    //var contentData = [];
+    var cur_list_time;
+    var queryData;
+    var pullRefresh;
+
+    apiready = function(){
+        pullRefresh = new auiPullToRefresh({//加载下拉刷新组件
+			container: document.querySelector('.aui-refresh-content'),
+			triggerDistance: 100
+		},function(ret){
+			if(ret.status=="success"){
+				cur_list_time = new Date().getTime();
+                $api.dom('#list').innerHTML = '';
+                listData = [];
+                api.showProgress({
+                    style: 'default',
+                    animationType: 'fade',
+                    title: '加载帖子中...',
+                    text: '先喝杯茶...',
+                    modal: false
+                });
+                getPosts();
+			}
+		});
+
+        var scroll = new auiScroll({//加载底部加载组件
+            listen:false, //是否监听滚动高度，开启后将实时返回滚动高度
+            distance:0 //判断到达底部的距离，isToBottom为true
+        },function(ret){
+            if(ret.isToBottom){
+                getPosts();
+            }
+        });
+
+        api.setFrameAttr({
+            name: 'frame0',
+            bounces:false
+        });
+        cur_list_time = new Date().getTime();
+        api.showProgress({
+            style: 'default',
+            animationType: 'fade',
+            title: '加载帖子中...',
+            text: '先喝杯茶...',
+            modal: false
+        });
+        getPosts();
+    };
+
+    function getPosts(){
+        var query = api.require('query');
+        var model = api.require('model');
+
+        query.createQuery(function(ret,err){
+        	if(ret && ret.qid){
+                var qid = ret.qid;
+
+                query.whereLessThanOrEqual({//用cur_list_time记录现在加载出来的时间最早的帖，保证不重复加载相同的帖子
+                    qid : qid,
+                    value : cur_list_time,
+                    column : 'time'
+                });
+
+                query.limit({
+                    qid : qid,
+                    value : 20
+                });
+
+                query.desc({
+                    qid : qid,
+                    column : 'time'
+                });
+
+
+                model.findAll({
+                    class: 'Forum',
+                    qid: qid
+                },function(ret,err){
+                    if(ret.length != 0){
+                        queryData = ret;
+                        pushData(0);
+                    }
+                });
+            }
+        });
+    }
+
+    function pushData( index ){//因为回调的异步关系，递归调用该函数加载listData的数据
+        fnGet('user',{"username":queryData[index].poster},0,5
+            ,function(ret,err){
+                if(ret){
+                    var body = ret.body[0];
+                    listData.push({
+                        images : queryData[index].images,
+                        title : queryData[index].title,
+                        poster : queryData[index].poster,
+                        date : new Date(queryData[index].time).toLocaleString(),
+                        id : queryData[index].id,
+                        content : queryData[index].content,
+                        avatar : body.avatar.url
+                    });
+                    if(index == queryData.length - 1){
+                        cur_list_time = queryData[index].time - 1;
+                        openList();
+                    }
+                    else{
+                        pushData(index + 1);
+                    }
+                }
+                else{
+                    alert(JSON.stringify(err));
+                }
+            });
+    }
+
+    function openList(){
+        for(var i in listData){
+            var head = document.getElementById('list');
+            var el = document.createElement('li');
+            $api.attr(el, 'class', 'aui-list-item');
+            $api.attr(el, 'id', i);
+            $api.attr(el, 'onclick', 'openPost( this.id )');
+
+            var str = '<div class="aui-list-item-inner">';
+                str += '<div class="aui-list-item-title aui-font-size-18">' + listData[i].title + '</div>';//标题
+                str += '<div class="aui-row aui-row-padded aui-margin-t-5">';
+                    for(var j in listData[i].images){
+                        str += '<div class="aui-col-xs-4"><img src="' + listData[i].images[j].url + '"/></div>';//内容中的图片
+                    }
+                str += '</div>';
+            str += '</div>';
+            str += '<div class="aui-info  aui-padded-t-0 aui-padded-r-15">';
+                str += '<div class="aui-info-item aui-font-size-12">';
+                    str += '<img src="' + listData[i].avatar + '" style="width:1rem" class="aui-img-round" />';//用户头像
+                    str += '<span class="aui-margin-l-5">' + listData[i].poster + '</span>';//用户名
+                str += '</div>';
+                str += '<div class="aui-info-item aui-font-size-12">' + listData[i].date + '</div>';//日期
+            str += '</div>';
+
+            var o = $api.html(el, str);
+            head.appendChild(o);
+        }
+        api.hideProgress();
+        pullRefresh.cancelLoading(); //刷新成功后调用此方法隐藏
+    }
+
+    function openPost( id ){
+        api.openWin({
+            name: 'win_post',
+            url: './win_post.html',
+            pageParam: {
+                content : listData[id].content,
+                postTime : listData[id].date,
+                poster : listData[id].poster,
+                postTitle : listData[id].title,
+                postID : listData[id].id
+            }
+        });
+    }
+
+</script>
+</body>
+</html>

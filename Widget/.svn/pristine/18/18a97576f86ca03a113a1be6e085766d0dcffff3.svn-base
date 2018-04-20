@@ -1,0 +1,69 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>聊天界面</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../css/aui.css" />
+    <style type="text/css">
+
+    </style>
+</head>
+<body>
+    <section class="aui-chat">
+    </section>
+</body>
+<script type="text/javascript" src="../script/api.js" ></script>
+<script type="text/javascript" src="../script/APICloud-rest-SHA1.js" ></script>
+<script type="text/javascript" src="../script/remotedb.js" ></script>
+<script type="text/javascript" src="../script/zepto.min.js" ></script>
+<script type="text/javascript">
+    apiready = function () {
+        curUser = $api.getStorage('current user');
+        curUserAvatar = $api.getStorage('current user avatar');
+        letters = api.pageParam.letters;
+        openChat();
+    }
+
+    var curUser, curUserAvatar, cur_list_time = 0, letters;
+
+    function openChat(){
+        for(var i = 0; i < letters.length; i++){
+
+            var head = $api.dom('.aui-chat');
+
+            var str = '<div class="aui-chat-item ';
+            if(letters[i].from == curUser){
+                str += 'aui-chat-right"';
+            }
+            else{
+                str += 'aui-chat-left"';
+            }
+
+            str += 'id="' + i + '">';
+
+                str += '<div class="aui-chat-media">';
+                    if(letters[i].from == curUser){
+                        str += '<img src="' + curUserAvatar + '" />';
+                    }
+                    else{
+                        str += '<img src="' + api.pageParam.targetUserAvatar + '" />';
+                    }
+                str += '</div>';
+
+                str += '<div class="aui-chat-inner">';
+                    str += '<div class="aui-chat-name">' + letters[i].from + '</div>';
+                    str += '<div class="aui-chat-content">';
+                        str += '<div class="aui-chat-arrow"></div>';
+                        str += letters[i].Content;
+                    str += '</div>';
+                str += '</div>';
+
+            $api.append(head, str);
+        }
+        alert($api.html($api.dom('.aui-chat')));
+    }
+</script>
+</html>

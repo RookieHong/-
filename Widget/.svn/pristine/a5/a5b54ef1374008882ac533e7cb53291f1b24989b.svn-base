@@ -1,0 +1,204 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <title>评论</title>
+    <link rel="stylesheet" type="text/css" href="../css/aui.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/aui-pull-refresh.css" />
+    <style>
+        body {
+
+        }
+
+        .aui-padded-t-8 {
+        	padding-top: 0.40rem !important;
+        }
+    </style>
+</head>
+
+<body>
+    <footer class="aui-bar aui-bar-tab aui-bg-default" id="footer">
+        <div class="aui-searchbar">
+            <div class="aui-searchbar-input aui-border-radius">
+                <input type="text" placeholder="添加评论" id="inputComment">
+            </div>
+            <div class="aui-bar-tab-item aui-padded-b-5 aui-padded-r-5" tapmode style="width: 2.2rem;background-color: #ebeced;" onclick="postComment()">
+                <div class="aui-btn aui-btn-info">提交</div>
+            </div>
+        </div>
+    </footer>
+
+    <section class="aui-refresh-content">
+        <div class="aui-content">
+            <ul class="aui-list aui-media-list" id="list">
+            </ul>
+        </div>
+    </section>
+
+    <div class="aui-invisible" style="height:40px;background-color:#FFFFFF;"></div>
+
+<script type="text/javascript" src="../script/api.js"></script>
+<script type="text/javascript" src="../script/aui-pull-refresh.js"></script>
+<script type="text/javascript" src="../script/zepto.min.js"></script>
+<script type="text/javascript" src="../script/APICloud-rest-SHA1.js"></script>
+<script type="text/javascript" src="../script/remotedb.js"></script>
+<script type="text/javascript" src="../script/aui-toast.js" ></script>
+<script>
+    apiready=function(){
+        pullRefresh = new auiPullToRefresh({//加载下拉刷新组件
+			container: document.querySelector('.aui-refresh-content'),
+			triggerDistance: 100
+		},function(ret){
+			if(ret.status=="success"){
+                $api.dom('#list').innerHTML = '';
+				listData = [];
+                getComments();
+			}
+		});
+        getComments();
+    }
+
+    var client, listData, pullRefresh, posterAvatars = {};
+    var avatarData = [];
+
+    function getComments(){
+        api.showProgress({
+            style: 'default',
+            animationType: 'fade',
+            title: '加载评论中...',
+            text: '先喝杯茶...',
+            modal: false
+        });
+
+        client = new Resource('A6061114726582','F70FEF7F-7BB8-5B9C-EEB3-41D3963C3F0C');//JS-SDK的初始化
+        var Model = client.Factory("Forum");
+        Model.get({"_id":api.pageParam.postID,"_relation":"comments"},
+            function (ret,err) {
+                if(ret){
+                    listData = ret;
+                    getAvatars();
+                }
+                else{
+                    alert(JSON.stringify(err));
+                }
+            });
+    }
+
+    function getAvatars(){
+        var requestsBatch = [];
+        var posters = [];
+        for(var i = 0; i < listData.length; i++){//把不同的用户请求塞进requestsBatch
+            if($.inArray(listData[i].poster,posters) == -1){
+                posters.push(listData[i].poster);
+                requestsBatch.push({
+                        "method" : "GET",
+                        "path" : 'https://d.apicloud.com/mcm/api/user' + '?filter={"where":' + JSON.stringify({"username":listData[i].poster}) + ',"skip":0,"limit":1}'
+                    });
+            }
+        }
+        client.batch(requestsBatch,function(ret,err){//发起批量请求
+            if(ret){
+                for(var i = 0; i < ret.length; i++){//构成用户名-头像json对象
+                    posterAvatars[ret[i][0].username] = ret[i][0].avatar.url;
+                }
+                for(var i = 0; i < listData.length; i++){//填满listData
+                    avatarData.push(posterAvatars[listData[i].poster]);
+                }
+                openComments();
+            }
+            else{
+                alert(JSON.stringify(err));
+            }
+        });
+    }
+
+    function openComments(){
+        for(var i in listData){
+            var head = document.getElementById('list');
+            var el = document.createElement('li');
+            $api.attr(el, 'class', 'aui-list-item');
+            $api.attr(el, 'id', i);
+
+            var str = '<div class="aui-media-list-item-inner">';
+                str += '<div class="aui-list-item-media" >';
+                    str += '<img src="' + avatarData[i] + '" class="aui-img-round" onclick=\'openHomepage("' + listData[i].poster + '","' + avatarData[i] + '")\'/>';
+                str += '</div>';
+                str += '<div class="aui-list-item-inner">';
+                    str += '<div class="aui-list-item-text">';
+                        if(listData[i].poster == api.pageParam.poster){
+                            str += '<div class="aui-list-item-title">' + listData[i].poster + '</div>';
+                            str += '<div class="aui-label aui-label-primary">' + '帖主' + '</div>';
+                        }
+                        else{
+                            str += '<div class="aui-list-item-title">' + listData[i].poster + '</div>';
+                        }
+                    str += '</div>';
+                    str += '<div class="aui-list-item-text">';
+                        str += listData[i].content;
+                    str += '</div>';
+                str += '</div>';
+                str += '<div class="aui-info" style="padding-top:0">';
+                    str += '<div class="aui-info-item">';
+                        var date = new Date(listData[i].createdAt);
+                        str += date.toLocaleString();
+                    str += '</div>';
+                str += '</div>';
+
+            var o = $api.html(el, str);
+            head.appendChild(o);
+        }
+        api.hideProgress();
+        pullRefresh.cancelLoading(); //刷新成功后调用此方法隐藏
+    }
+
+    function openHomepage(targetUser, userAvatar){
+        api.openWin({
+            name: 'win_homepage',
+            url: './win_homepage.html',
+            pageParam: {
+                targetUser : targetUser,
+                userAvatar : userAvatar
+            }
+        });
+    }
+
+    function postComment(){
+        var curUser = $api.getStorage('current user');
+        if(curUser){
+            var content = $api.dom('#inputComment').value;
+            var Model = client.Factory("Forum");
+            var toast = new auiToast();
+            if(content){
+                Model.save({"_id":api.pageParam.postID,"_relation":"comments"},{"poster" : curUser, "content" : content},
+                    function (ret,err) {
+                        if(err){
+                            toast.fail({
+                                title : "提交失败！",
+                                duration : 1000
+                            });
+                            alert(JSON.stringify(err));
+                        }
+                        else{
+                            toast.success({
+                                title : "提交成功！请刷新页面后查看！",
+                                duration : 1000
+                            });
+                            $api.dom('#inputComment').value = '';
+                        }
+                });
+            }
+            else {
+                toast.fail({
+                    title : "请勿提交空白内容！",
+                    duration : 1000
+                });
+            }
+        }
+        else{
+            alert('请先登录！');
+        }
+    }
+</script>
+</body>
+</html>

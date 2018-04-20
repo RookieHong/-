@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <link rel="stylesheet" type="text/css" href="../css/api.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/aui.css"/>
+</head>
+<style>
+    .center-in-center{
+       position: absolute;
+       top: 50%;
+       left: 50%;
+       -webkit-transform: translate(-50%, -50%);
+       -moz-transform: translate(-50%, -50%);
+       -ms-transform: translate(-50%, -50%);
+       -o-transform: translate(-50%, -50%);
+       transform: translate(-50%, -50%);
+   }
+</style>
+<body>
+    <div class="center-in-center aui-btn aui-btn-danger aui-btn-block aui-btn-outlined" onclick="toLogin()">请先登录</div>
+    <div class="aui-content aui-hide">
+        <div class="aui-card-list">
+            <div class="aui-card-list-header" onclick="toggleContact( this )">
+                <div>
+                    <span class="aui-text-success"> 最近联系人
+                        <div class="aui-label aui-label-info">0</div>
+                    </span>
+                </div>
+                <i class="aui-iconfont aui-icon-down"></i>
+            </div>
+            <div class="aui-card-list-content aui-hide">
+                <ul class="aui-list aui-media-list">
+                </ul>
+            </div>
+        </div>
+        <div class="aui-card-list">
+            <div class="aui-card-list-header" onclick="toggleContact( this )">
+                <div>
+                    <span class="aui-text-success"> 关注
+                        <div class="aui-label aui-label-info">0</div>
+                    </span>
+                </div>
+                <i class="aui-iconfont aui-icon-down"></i>
+            </div>
+            <div class="aui-card-list-content aui-hide">
+                <ul class="aui-list aui-media-list">
+                </ul>
+            </div>
+        </div>
+        <div class="aui-card-list">
+            <div class="aui-card-list-header" onclick="toggleContact( this )">
+                <div>
+                    <span class="aui-text-success"> 粉丝
+                        <div class="aui-label aui-label-info">0</div>
+                    </span>
+                </div>
+                <i class="aui-iconfont aui-icon-down"></i>
+            </div>
+            <div class="aui-card-list-content aui-hide">
+                <ul class="aui-list aui-media-list">
+                </ul>
+            </div>
+        </div>
+    </div>
+<script src="../script/api.js"></script>
+<script src="../script/APICloud-rest-SHA1.js"></script>
+<script src="../script/remotedb.js"></script>
+<script src="../script/zepto.min.js"></script>
+<script>
+
+    apiready = function () {
+        api.addEventListener({
+            name: 'login'
+        }, function(ret, err){
+            if( ret ){
+                checkUserId();
+            }
+        });
+        checkUserId();
+        Init();
+    }
+
+    var curUser, client, curUserLetters, loadedContacts = {};
+    var totalContacts = [], recentContacts = [], contacts = [];
+
+    function Init(){
+        client = new Resource('A6061114726582','F70FEF7F-7BB8-5B9C-EEB3-41D3963C3F0C');//JS-SDK的初始化
+        client.batch([
+            {
+                "method" : "GET",//查找当前用户的粉丝和关注
+                "path" : 'https://d.apicloud.com/mcm/api/user' + '?filter={"where":' + JSON.stringify({"username":curUser}) + ',"skip":0,"limit":1}'
+            },
+            {
+                "path":"https://d.apicloud.com/mcm/api/Letters",//查找最近的来往
+                "method":"GET",
+                "filter":{
+                    "where": {
+                        "or": [
+                            {"from": curUser},
+                            {"to": curUser}
+                        ]
+                    },
+                    "skip" : 0,
+                    "order" : "time ASC"
+                }
+            }
+        ],function(ret, err){
+            if(ret){
+                curUserLetters = ret[1];
+                for(var i = 0; i < curUserLetters.length; i++){//把信件来往加入totalContacts
+                    if(curUserLetters[i].from != curUser){
+                        if($.inArray(curUserLetters[i].from,totalContacts) == -1){
+                            totalContacts.push(curUserLetters[i].from);
+                            recentContacts.push({
+                                username : curUserLetters[i].from,
+                                id : curUserLetters[i].fromID
+                            });
+                        }
+                    }
+                    if(curUserLetters[i].to != curUser){
+                        if($.inArray(curUserLetters[i].to,totalContacts) == -1){
+                            totalContacts.push(curUserLetters[i].to);
+                            recentContacts.push({
+                                username : curUserLetters[i].to,
+                                id : curUserLetters[i].toID
+                            });
+                        }
+                    }
+                }
+                contacts.push(recentContacts);
+                contacts.push(ret[0][0].follows);
+                contacts.push(ret[0][0].fans);
+                for(var i = 1; i < contacts.length - 1; i++){
+                    for(var j = 0; j < contacts[i].length; j++){//把关注粉丝加入totalContacts
+                        if($.inArray(contacts[i][j].username,totalContacts) == -1){
+                            totalContacts.push(contacts[i][j].username);
+                        }
+                    }
+                }
+
+                var contactLabels = $api.domAll('.aui-label');//改变标签内的数值
+                for(var i = 0; i < contactLabels.length; i++){
+                    contactLabels[i].innerHTML = contacts[i].length;
+                }
+                LoadContacts();
+            }
+        });
+    }
+
+    function LoadContacts(){
+        var requestsBatch = [];
+        for(var i = 0; i < totalContacts.length; i++){
+            requestsBatch.push({
+                "method" : "GET",
+                "path" : 'https://d.apicloud.com/mcm/api/user' + '?filter={"where":' + JSON.stringify({"username":totalContacts[i]}) + ',"skip":0,"limit":1}'
+            });
+        }
+        client.batch(requestsBatch,function(ret,err){
+            if(ret){
+                for(var i = 0; i < ret.length; i++){
+                    loadedContacts[totalContacts[i]] = ret[i][0];//把该用户的信息塞进loadedContacts的totalContacts[i]中
+                    var letters = [];
+                    for(var j = 0; j < curUserLetters.length; j++){
+                        if(curUserLetters[j].from == totalContacts[i] || curUserLetters[j].to == totalContacts[i]){
+                            letters.push(curUserLetters[j]);
+                        }
+                    }
+                    loadedContacts[totalContacts[i]]["letters"] = letters;//把和该用户的来往信件塞进loadedContacts的totalContacts[i]的letters中
+                }
+                openContacts();
+            }
+        });
+    }
+
+    function openContacts(){
+        var contactLists = $api.domAll('.aui-media-list');
+        for(var i = 0; i < contactLists.length; i++){
+            for(var j = 0; j < contacts[i].length; j++){
+
+                var head = contactLists[i];
+                var el = document.createElement('li');
+                $api.attr(el, 'class', 'aui-list-item');
+                $api.attr(el, 'id', contacts[i][j]['username']);
+                $api.attr(el, 'onclick', 'openChatWin( this.id )');
+
+                var str = '<div class="aui-media-list-item-inner">';
+                    str += '<div class="aui-list-item-media" style="width: 3rem;">';
+                        str += '<img src="' + loadedContacts[  contacts[i][j]['username']  ]['avatar']['url'] + '" class="aui-img-round aui-list-img-sm">';
+                    str += '</div>';
+                    str += '<div class="aui-list-item-inner aui-list-item-arrow">';
+                        str += '<div class="aui-list-item-text">';
+                            str += '<div class="aui-list-item-title aui-font-size-14">' + contacts[i][j]['username'] + '</div>';
+                        str += '</div>';
+                        str += '<div class="aui-list-item-text">';
+                            var temp = loadedContacts[ contacts[i][j]['username'] ]["letters"].pop();
+                            if(temp){
+                                str += temp.Content;
+                                loadedContacts[ contacts[i][j]['username'] ]["letters"].push(temp);
+                            }
+                        str += '</div>';
+                    str += '</div>';
+                str += '</div>';
+
+                var o = $api.html(el, str);
+                head.appendChild(o);
+            }
+        }
+    }
+
+    function toggleContact( tag ){//点击改变样式
+        var contactHead = $api.domAll('.aui-card-list-header'),
+            contactContent = $api.domAll('.aui-card-list-content'),
+            contactIcon = $api.domAll('.aui-iconfont'),
+            index = 0;
+        for (var i = 0,len = contactHead.length; i < len; i++) {
+            if( tag == contactHead[i] ){
+                index = i;
+            }
+        }
+        if($api.hasCls(contactContent[index],'aui-hide')){
+            $api.removeCls(contactIcon[index], 'aui-icon-down');
+            $api.addCls(contactIcon[index], 'aui-icon-top');
+        }
+        else{
+            $api.addCls(contactIcon[index], 'aui-icon-down');
+            $api.removeCls(contactIcon[index], 'aui-icon-top');
+        }
+        $api.toggleCls(contactContent[index], 'aui-hide');
+    }
+
+    function openChatWin( targetUser ){//打开和该用户的聊天窗口
+        api.openWin({
+            name: 'win_chat',
+            url: './win_chat.html',
+            pageParam: {
+                letters : loadedContacts[targetUser]["letters"],
+                targetUser : targetUser,
+                targetUserAvatar : loadedContacts[targetUser]["avatar"]["url"]
+            }
+        });
+
+    }
+
+    function checkUserId(){
+        if(curUser = $api.getStorage("current user")){
+            $api.addCls($api.dom('.center-in-center'),'aui-hide');
+            $api.removeCls($api.dom('.aui-content'), 'aui-hide');
+        }else{
+            $api.removeCls($api.dom('.center-in-center'),'aui-hide');
+            $api.addCls($api.dom('.aui-content'), 'aui-hide');
+        }
+    }
+
+    function toLogin(){
+        api.openWin({
+            name: 'login',
+            url: './win_login.html'
+        });
+    }
+</script>
+</body>
+</html>

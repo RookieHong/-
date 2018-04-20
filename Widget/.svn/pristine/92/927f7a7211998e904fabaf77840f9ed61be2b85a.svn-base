@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>朋友</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/style.css"/>
+    <style>
+        .empty{ text-align: center; padding: 120px 0; }
+
+        .search_box {
+            width: 100%;
+            height: 43px;
+            background-color: #fff;
+            box-sizing: border-box;
+            padding-top: 7px;
+            position: relative;
+            border: 1px solid #e8e8e8;
+        }
+
+        .search {
+            width: 100%;
+            height: 27px;
+            line-height: 27px;
+            box-sizing: border-box;
+            padding-left: 31px;
+            font-size: 13px;
+            color: #999;
+            background-color: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            background-image: url(../image/search.png);
+            background-size: 15px 15px;
+            background-repeat: no-repeat;
+            background-position: 13px center;
+        }
+
+        .search input {
+            width: 100%;
+            height: 27px;
+            line-height: 16px;
+            outline: none;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<script type="text/javascript" src="../script/api.js"></script>
+<script type="text/javascript">
+
+    var listData = [];
+    var contentData = [];
+    var cur_list_time;
+
+    apiready = function(){
+        api.setFrameAttr({
+            name: 'frame0',
+            bounces:false
+        });
+        cur_list_time = new Date().getTime();
+        getPosts();
+    };
+
+    function getPosts(){
+        var query = api.require('query');
+        var model = api.require('model');
+
+        api.showProgress({
+            style: 'default',
+            animationType: 'fade',
+            title: '加载帖子中...',
+            text: '先喝杯茶...',
+            modal: false
+        });
+
+        query.createQuery(function(ret,err){
+        	if(ret && ret.qid){
+                var qid = ret.qid;
+
+                query.whereLessThanOrEqual({
+                    qid : qid,
+                    value : cur_list_time,
+                    column : 'time'
+                });
+
+                query.limit({
+                    qid : qid,
+                    value : 1
+                });
+
+                query.desc({
+                    qid : qid,
+                    column : 'time'
+                });
+
+
+                model.findAll({
+                    class: 'Forum',
+                    qid: qid
+                },function(ret,err){
+                    if(ret){
+                        for(var i in ret){
+                            cur_list_time = ret[i].time - 1;
+                            contentData.push(ret[i].content);
+                            listData.push({
+                                imgPath : '',
+                                title : ret[i].title,
+                                subtitle :　ret[i].poster,
+                                remark : ret[i].createdAt,
+                                uid : ret[i].id,
+                                rightBtns : [{
+                                    bgColor: '#388e8e',
+                                    activeBgColor: '',
+                                    width: 70,
+                                    title: '删除',
+                                    titleSize: 12,
+                                    titleColor: '#fff',
+                                    icon: '',
+                                    iconWidth: 20
+                                }]
+                            });
+                        }
+                    }
+                    openUIList();
+                });
+
+            }
+        });
+
+    }
+
+    function openUIList(){
+        var UIListView = api.require('UIListView');
+        var curUser = $api.getStorage('current user');
+        var query = api.require('query');
+        var model = api.require('model');
+
+        UIListView.open({
+            rect: {
+                x: 0,
+                y: 0,
+                w: api.winWidth,
+                h: api.frameHeight
+            },
+            data : listData,
+            styles: {
+                borderColor: '#696969',
+                item: {
+                    bgColor: '#AFEEEE',
+                    activeBgColor: '#F5F5F5',
+                    height: 55.0,
+                    imgWidth: 40,
+                    imgHeight: 40,
+                    imgCorner: 4,
+                    placeholderImg: '',
+                    titleSize: 12.0,
+                    titleColor: '#000',
+                    subTitleSize: 12.0,
+                    subTitleColor: '#000',
+                    remarkColor: '#000',
+                    remarkSize: 16,
+                    remarkIconWidth: 30
+                }
+            },
+            fixedOn: api.frameName
+        }, function(ret, err){
+            if( ret ){
+                if(ret.eventType == 'clickContent'){
+                    api.openFrame({
+                        name: 'content',
+                        url: './win_post.html',
+                        rect: {
+                            x: 0,
+                            y: 0,
+                            w: api.screenWidth,
+                            h: api.screenHeight
+                        },
+                        pageParam: {
+                            content : contentData[ret.index]
+                        },
+                        bounces: true,
+                        bgColor: 'rgba(0,0,0,0)',
+                        vScrollBarEnabled: true,
+                        hScrollBarEnabled: true
+                    });
+                }
+            }else{
+                 alert( JSON.stringify( err ) );
+            }
+        });
+        UIListView.setRefreshFooter({
+            loadingImg: 'widget://image/loading_more.gif',
+            bgColor: '#F5F5F5',
+            textColor: '#8E8E8E',
+            textUp: '上拉加载更多...',
+            textDown: '松开开始加载...',
+            showTime: true
+        }, function(ret, err){
+            if( ret ){
+                refreshList();
+            }else{
+                alert( JSON.stringify( err ) );
+            }
+        });
+        api.hideProgress();
+    }
+
+    function refreshList(){
+        var UIListView = api.require('UIListView');
+        UIListView.close();
+        getPosts();
+    }
+
+</script>
+</html>
